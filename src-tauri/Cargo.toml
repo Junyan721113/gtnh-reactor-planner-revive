@@ -1,0 +1,21 @@
+[package]
+name = "ic2-exp-reactor-planner-modern"
+version = "0.1.0"
+description = "Modern GTNH/IC2 Experimental Reactor Planner"
+authors = ["Ic2ExpReactorPlanner contributors"]
+edition = "2021"
+license = "GPL-2.0-or-later"
+
+[lib]
+name = "ic2_exp_reactor_planner_modern_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.1", features = [] }
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2.4", features = [] }
+thiserror = "2"
+rfd = "0.15"

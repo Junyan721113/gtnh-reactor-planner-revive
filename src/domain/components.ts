@@ -1,0 +1,120 @@
+import type { ComponentDefinition } from "./types";
+
+const ic2 = (name: string) => `/assets/ic2/textures/items/${name}`;
+const gt = (name: string) => `/assets/gregtech/textures/items/${name}`;
+const gtnh = (name: string) => `/assets/gtnh/textures/items/${name}`;
+const fm = (name: string) => `/assets/fm/textures/items/${name}`;
+
+const fuel = (
+  id: number,
+  key: string,
+  name: string,
+  image: string,
+  maxDamage: number,
+  sourceMod: ComponentDefinition["sourceMod"],
+  energyMult: number,
+  heatMult: number,
+  rodCount: number,
+  moxStyle: boolean,
+): ComponentDefinition => ({
+  id,
+  key,
+  name,
+  kind: "fuelRod",
+  maxDamage,
+  maxHeat: 1,
+  sourceMod,
+  image,
+  fuel: { energyMult, heatMult, rodCount, moxStyle },
+});
+
+const cell = (
+  id: number,
+  key: string,
+  name: string,
+  image: string,
+  maxHeat: number,
+  sourceMod: ComponentDefinition["sourceMod"],
+): ComponentDefinition => ({
+  id,
+  key,
+  name,
+  kind: "coolantCell",
+  maxDamage: 1,
+  maxHeat,
+  sourceMod,
+  image,
+});
+
+export const COMPONENTS: ComponentDefinition[] = [
+  fuel(1, "fuelRodUranium", "Fuel Rod (Uranium)", ic2("reactorUraniumSimple.png"), 20_000, "IC2", 100, 2, 1, false),
+  fuel(2, "dualFuelRodUranium", "Dual Fuel Rod (Uranium)", ic2("reactorUraniumDual.png"), 20_000, "IC2", 200, 4, 2, false),
+  fuel(3, "quadFuelRodUranium", "Quad Fuel Rod (Uranium)", ic2("reactorUraniumQuad.png"), 20_000, "IC2", 400, 8, 4, false),
+  fuel(4, "fuelRodMox", "Fuel Rod (MOX)", ic2("reactorMOXSimple.png"), 10_000, "IC2", 100, 2, 1, true),
+  fuel(5, "dualFuelRodMox", "Dual Fuel Rod (MOX)", ic2("reactorMOXDual.png"), 10_000, "IC2", 200, 4, 2, true),
+  fuel(6, "quadFuelRodMox", "Quad Fuel Rod (MOX)", ic2("reactorMOXQuad.png"), 10_000, "IC2", 400, 8, 4, true),
+  { id: 7, key: "neutronReflector", name: "Neutron Reflector", kind: "reflector", maxDamage: 30_000, maxHeat: 1, sourceMod: "IC2", image: ic2("reactorReflector.png") },
+  { id: 8, key: "thickNeutronReflector", name: "Thick Neutron Reflector", kind: "reflector", maxDamage: 120_000, maxHeat: 1, sourceMod: "IC2", image: ic2("reactorReflectorThick.png") },
+  { id: 9, key: "heatVent", name: "Heat Vent", kind: "vent", maxDamage: 1, maxHeat: 1_000, sourceMod: "IC2", image: ic2("reactorVent.png"), vent: { selfVent: 6, hullDraw: 0, sideVent: 0 } },
+  { id: 10, key: "advancedHeatVent", name: "Advanced Heat Vent", kind: "vent", maxDamage: 1, maxHeat: 1_000, sourceMod: "IC2", image: ic2("reactorVentDiamond.png"), vent: { selfVent: 12, hullDraw: 0, sideVent: 0 } },
+  { id: 11, key: "reactorHeatVent", name: "Reactor Heat Vent", kind: "vent", maxDamage: 1, maxHeat: 1_000, sourceMod: "IC2", image: ic2("reactorVentCore.png"), vent: { selfVent: 5, hullDraw: 5, sideVent: 0 } },
+  { id: 12, key: "componentHeatVent", name: "Component Heat Vent", kind: "vent", maxDamage: 1, maxHeat: 1, sourceMod: "IC2", image: ic2("reactorVentSpread.png"), vent: { selfVent: 0, hullDraw: 0, sideVent: 4 } },
+  { id: 13, key: "overclockedHeatVent", name: "Overclocked Heat Vent", kind: "vent", maxDamage: 1, maxHeat: 1_000, sourceMod: "IC2", image: ic2("reactorVentGold.png"), vent: { selfVent: 20, hullDraw: 36, sideVent: 0 } },
+  cell(14, "coolantCell10k", "10k Coolant Cell", ic2("reactorCoolantSimple.png"), 10_000, "IC2"),
+  cell(15, "coolantCell30k", "30k Coolant Cell", ic2("reactorCoolantTriple.png"), 30_000, "IC2"),
+  cell(16, "coolantCell60k", "60k Coolant Cell", ic2("reactorCoolantSix.png"), 60_000, "IC2"),
+  { id: 17, key: "heatExchanger", name: "Heat Exchanger", kind: "exchanger", maxDamage: 1, maxHeat: 2_500, sourceMod: "IC2", image: ic2("reactorHeatSwitch.png"), exchanger: { switchSide: 12, switchReactor: 4 } },
+  { id: 18, key: "advancedHeatExchanger", name: "Advanced Heat Exchanger", kind: "exchanger", maxDamage: 1, maxHeat: 10_000, sourceMod: "IC2", image: ic2("reactorHeatSwitchDiamond.png"), exchanger: { switchSide: 24, switchReactor: 8 } },
+  { id: 19, key: "coreHeatExchanger", name: "Reactor Heat Exchanger", kind: "exchanger", maxDamage: 1, maxHeat: 5_000, sourceMod: "IC2", image: ic2("reactorHeatSwitchCore.png"), exchanger: { switchSide: 0, switchReactor: 72 } },
+  { id: 20, key: "componentHeatExchanger", name: "Component Heat Exchanger", kind: "exchanger", maxDamage: 1, maxHeat: 5_000, sourceMod: "IC2", image: ic2("reactorHeatSwitchSpread.png"), exchanger: { switchSide: 36, switchReactor: 0 } },
+  { id: 21, key: "reactorPlating", name: "Reactor Plating", kind: "plating", maxDamage: 1, maxHeat: 1, sourceMod: "IC2", image: ic2("reactorPlating.png"), plating: { heatAdjustment: 1_000, explosionPowerMultiplier: 0.9025 } },
+  { id: 22, key: "heatCapacityReactorPlating", name: "Heat-Capacity Reactor Plating", kind: "plating", maxDamage: 1, maxHeat: 1, sourceMod: "IC2", image: ic2("reactorPlatingHeat.png"), plating: { heatAdjustment: 1_700, explosionPowerMultiplier: 0.9801 } },
+  { id: 23, key: "containmentReactorPlating", name: "Containment Reactor Plating", kind: "plating", maxDamage: 1, maxHeat: 1, sourceMod: "IC2", image: ic2("reactorPlatingExplosive.png"), plating: { heatAdjustment: 500, explosionPowerMultiplier: 0.81 } },
+  { id: 24, key: "rshCondensator", name: "RSH-Condensator", kind: "condensator", maxDamage: 1, maxHeat: 20_000, sourceMod: "IC2", image: ic2("reactorCondensator.png") },
+  { id: 25, key: "lzhCondensator", name: "LZH-Condensator", kind: "condensator", maxDamage: 1, maxHeat: 100_000, sourceMod: "IC2", image: ic2("reactorCondensatorLap.png") },
+  fuel(26, "fuelRodThorium", "Fuel Rod (Thorium)", gt("gt.Thoriumcell.png"), 50_000, "GT5.08", 20, 0.5, 1, false),
+  fuel(27, "dualFuelRodThorium", "Dual Fuel Rod (Thorium)", gt("gt.Double_Thoriumcell.png"), 50_000, "GT5.08", 40, 1, 2, false),
+  fuel(28, "quadFuelRodThorium", "Quad Fuel Rod (Thorium)", gt("gt.Quad_Thoriumcell.png"), 50_000, "GT5.08", 80, 2, 4, false),
+  cell(29, "coolantCellHelium60k", "60k He Coolant Cell", gt("gt.60k_Helium_Coolantcell.png"), 60_000, "GT5.08"),
+  cell(30, "coolantCellHelium180k", "180k He Coolant Cell", gt("gt.180k_Helium_Coolantcell.png"), 180_000, "GT5.08"),
+  cell(31, "coolantCellHelium360k", "360k He Coolant Cell", gt("gt.360k_Helium_Coolantcell.png"), 360_000, "GT5.08"),
+  cell(32, "coolantCellNak60k", "60k NaK Coolant Cell", gt("gt.60k_NaK_Coolantcell.png"), 60_000, "GT5.08"),
+  cell(33, "coolantCellNak180k", "180k NaK Coolant Cell", gt("gt.180k_NaK_Coolantcell.png"), 180_000, "GT5.08"),
+  cell(34, "coolantCellNak360k", "360k NaK Coolant Cell", gt("gt.360k_NaK_Coolantcell.png"), 360_000, "GT5.08"),
+  { id: 35, key: "iridiumNeutronReflector", name: "Iridium Neutron Reflector", kind: "reflector", maxDamage: 1, maxHeat: 1, sourceMod: "IC2", image: gt("gt.neutronreflector.png") },
+  fuel(36, "fuelRodNaquadah", "Fuel Rod (Naquadah)", gt("gt.Naquadahcell.png"), 100_000, "GT5.09", 100, 2, 1, true),
+  fuel(37, "dualFuelRodNaquadah", "Dual Fuel Rod (Naquadah)", gt("gt.Double_Naquadahcell.png"), 100_000, "GT5.09", 200, 4, 2, true),
+  fuel(38, "quadFuelRodNaquadah", "Quad Fuel Rod (Naquadah)", gt("gt.Quad_Naquadahcell.png"), 100_000, "GT5.09", 400, 8, 4, true),
+  fuel(39, "fuelRodCoaxium", "Fuel Rod (Coaxium)", fm("coaxium_rod.png"), 20_000, "Coaxium", 100, 0, 1, false),
+  fuel(40, "dualFuelRodCoaxium", "Dual Fuel Rod (Coaxium)", fm("coaxium_rod_dual.png"), 20_000, "Coaxium", 200, 0, 2, false),
+  fuel(41, "quadFuelRodCoaxium", "Quad Fuel Rod (Coaxium)", fm("coaxium_rod_quad.png"), 20_000, "Coaxium", 400, 0, 4, false),
+  fuel(42, "fuelRodCesium", "Fuel Rod (Cesium)", fm("cesium_rod.png"), 10_861, "Coaxium", 200, 1, 1, false),
+  fuel(43, "dualFuelRodCesium", "Dual Fuel Rod (Cesium)", fm("cesium_rod_dual.png"), 10_861, "Coaxium", 400, 6, 2, false),
+  fuel(44, "quadFuelRodCesium", "Quad Fuel Rod (Cesium)", fm("cesium_rod_quad.png"), 10_861, "Coaxium", 800, 24, 4, false),
+  fuel(45, "fuelRodNaquadahGTNH", "Fuel Rod (Naquadah GTNH)", gt("gt.Naquadahcell.png"), 100_000, "GTNH", 100, 2, 1, false),
+  fuel(46, "dualFuelRodNaquadahGTNH", "Dual Fuel Rod (Naquadah GTNH)", gt("gt.Double_Naquadahcell.png"), 100_000, "GTNH", 200, 4, 2, false),
+  fuel(47, "quadFuelRodNaquadahGTNH", "Quad Fuel Rod (Naquadah GTNH)", gt("gt.Quad_Naquadahcell.png"), 100_000, "GTNH", 400, 8, 4, false),
+  fuel(48, "fuelRodNaquadria", "Fuel Rod (Naquadria)", gtnh("gt.MNqCell.png"), 100_000, "GTNH", 100, 2, 1, true),
+  fuel(49, "dualFuelRodNaquadria", "Dual Fuel Rod (Naquadria)", gtnh("gt.Double_MNqCell.png"), 100_000, "GTNH", 200, 4, 2, true),
+  fuel(50, "quadFuelRodNaquadria", "Quad Fuel Rod (Naquadria)", gtnh("gt.Quad_MNqCell.png"), 100_000, "GTNH", 400, 8, 4, true),
+  fuel(51, "fuelRodTiberium", "Fuel Rod (Tiberium)", gtnh("gt.Tiberiumcell.png"), 50_000, "GTNH", 100, 1, 1, false),
+  fuel(52, "dualFuelRodTiberium", "Dual Fuel Rod (Tiberium)", gtnh("gt.Double_Tiberiumcell.png"), 50_000, "GTNH", 200, 2, 2, false),
+  fuel(53, "quadFuelRodTiberium", "Quad Fuel Rod (Tiberium)", gtnh("gt.Quad_Tiberiumcell.png"), 50_000, "GTNH", 400, 4, 4, false),
+  fuel(54, "fuelRodTheCore", "Fuel Rod (The Core)", gtnh("gt.Core_Reactor_Cell.png"), 100_000, "GTNH", 72_534, 816, 32, false),
+  cell(55, "coolantCellSpace180k", "180k Space Coolant Cell", gtnh("gt.180k_Space_Coolantcell.png"), 180_000, "GTNH"),
+  cell(56, "coolantCellSpace360k", "360k Space Coolant Cell", gtnh("gt.360k_Space_Coolantcell.png"), 360_000, "GTNH"),
+  cell(57, "coolantCellSpace540k", "540k Space Coolant Cell", gtnh("gt.540k_Space_Coolantcell.png"), 540_000, "GTNH"),
+  cell(58, "coolantCellSpace1080k", "1080k Space Coolant Cell", gtnh("gt.1080k_Space_Coolantcell.png"), 1_080_000, "GTNH"),
+];
+
+export const COMPONENT_BY_ID = new Map(COMPONENTS.map((component) => [component.id, component]));
+export const COMPONENT_BY_KEY = new Map(COMPONENTS.map((component) => [component.key, component]));
+
+export const PALETTE_GROUPS = [
+  { title: "IC2 燃料", ids: [1, 2, 3, 4, 5, 6] },
+  { title: "GTNH 燃料", ids: [45, 46, 47, 48, 49, 50, 51, 52, 53, 54] },
+  { title: "冷却单元", ids: [14, 15, 16, 29, 30, 31, 32, 33, 34, 55, 56, 57, 58] },
+  { title: "散热/换热", ids: [9, 10, 11, 12, 13, 17, 18, 19, 20] },
+  { title: "反射/隔热/冷凝", ids: [7, 8, 35, 21, 22, 23, 24, 25] },
+  { title: "Coaxium/Cesium", ids: [39, 40, 41, 42, 43, 44] },
+];
