@@ -72,6 +72,7 @@ export class StepwiseSimulator {
     this.tick++;
     this.reactor.clearEUOutput();
     this.reactor.clearVentedHeat();
+    this.reactor.clearHeatFlows();
     this.forEachComponent((component) => component.preReactorTick());
     if (this.active) this.allFuelRodsDepleted = true;
 
@@ -288,6 +289,8 @@ export class StepwiseSimulator {
       huPerTick: this.reactor.ventedHeat * 2,
       ventedHeat: this.reactor.ventedHeat,
       components: this.reactor.components().map((component) => component.snapshot()),
+      componentHeatFlows: this.reactor.getComponentHeatFlows(),
+      hullHeatFlows: this.reactor.getHullHeatFlows(),
       eventCount: this.events.length,
     };
   }

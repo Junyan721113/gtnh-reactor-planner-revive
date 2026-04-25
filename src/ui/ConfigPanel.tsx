@@ -56,7 +56,6 @@ export const ConfigPanel = memo(function ConfigPanel({ config, onChange }: Props
         GT 行为
         <select value={config.gtMode} onChange={(event) => onChange({ gtMode: event.target.value as SimulationConfig["gtMode"] })}>
           <option value="GTNH">GTNH</option>
-          <option value="GT5.09">GT 5.09</option>
           <option value="none">IC2/默认</option>
         </select>
       </label>

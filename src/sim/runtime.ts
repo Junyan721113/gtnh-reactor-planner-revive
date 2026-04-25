@@ -1,5 +1,14 @@
 import { COMPONENT_BY_ID } from "../domain/components";
-import { REACTOR_COLS, REACTOR_ROWS, type ComponentDefinition, type ComponentSnapshot, type ReactorDesign, type SimulationConfig } from "../domain/types";
+import {
+  REACTOR_COLS,
+  REACTOR_ROWS,
+  type ComponentDefinition,
+  type ComponentHeatFlow,
+  type ComponentSnapshot,
+  type HullHeatFlow,
+  type ReactorDesign,
+  type SimulationConfig,
+} from "../domain/types";
 
 const neighborOffsets = [
   [-1, 0],
@@ -8,6 +17,10 @@ const neighborOffsets = [
   [0, -1],
 ] as const;
 
+interface ComponentHeatFlowAccumulator extends ComponentHeatFlow {}
+
+interface HullHeatFlowAccumulator extends HullHeatFlow {}
+
 export class ReactorRuntime {
   readonly grid: (RuntimeComponent | null)[][];
   readonly config: SimulationConfig;
@@ -15,6 +28,8 @@ export class ReactorRuntime {
   currentHeat = 0;
   maxHeat = 10_000;
   ventedHeat = 0;
+  private componentHeatFlows = new Map<string, ComponentHeatFlowAccumulator>();
+  private hullHeatFlows = new Map<string, HullHeatFlowAccumulator>();
 
   constructor(design: ReactorDesign) {
     this.config = { ...design.config };
@@ -63,6 +78,11 @@ export class ReactorRuntime {
     this.ventedHeat = 0;
   }
 
+  clearHeatFlows() {
+    this.componentHeatFlows.clear();
+    this.hullHeatFlows.clear();
+  }
+
   ventHeat(value: number) {
     this.ventedHeat += value;
   }
@@ -73,6 +93,37 @@ export class ReactorRuntime {
 
   adjustMaxHeat(value: number) {
     this.maxHeat += value;
+  }
+
+  recordComponentHeatFlow(fromRow: number, fromCol: number, toRow: number, toCol: number, amount: number) {
+    if (amount <= 0) return;
+    if (fromRow === toRow && fromCol === toCol) return;
+    const key = `${fromRow}:${fromCol}:${toRow}:${toCol}`;
+    const existing = this.componentHeatFlows.get(key);
+    if (existing) {
+      existing.amount += amount;
+      return;
+    }
+    this.componentHeatFlows.set(key, { fromRow, fromCol, toRow, toCol, amount });
+  }
+
+  recordHullHeatFlow(row: number, col: number, direction: HullHeatFlow["direction"], amount: number) {
+    if (amount <= 0) return;
+    const key = `${row}:${col}:${direction}`;
+    const existing = this.hullHeatFlows.get(key);
+    if (existing) {
+      existing.amount += amount;
+      return;
+    }
+    this.hullHeatFlows.set(key, { row, col, direction, amount });
+  }
+
+  getComponentHeatFlows(): ComponentHeatFlow[] {
+    return Array.from(this.componentHeatFlows.values());
+  }
+
+  getHullHeatFlows(): HullHeatFlow[] {
+    return Array.from(this.hullHeatFlows.values());
   }
 
   components() {
@@ -256,10 +307,7 @@ export class RuntimeComponent {
     const pulses = this.countNeutronNeighbors() + (fuel.rodCount === 1 ? 1 : fuel.rodCount === 2 ? 2 : 3);
     let energy = fuel.energyMult * pulses;
     const gtMode = this.parent.config.gtMode;
-    if (gtMode === "GT5.09" || this.definition.sourceMod === "GT5.09") {
-      energy *= 2;
-      if (fuel.moxStyle) energy *= 1 + (1.5 * this.parent.currentHeat) / this.parent.maxHeat;
-    } else if (gtMode === "GTNH" || this.definition.sourceMod === "GTNH") {
+    if (gtMode === "GTNH" || this.definition.sourceMod === "GTNH") {
       energy *= 10;
       if (fuel.moxStyle) energy *= 1 + (1.5 * this.parent.currentHeat) / this.parent.maxHeat;
     } else if (fuel.moxStyle) {
@@ -280,6 +328,7 @@ export class RuntimeComponent {
     this.currentHullCooling = hullDraw;
     this.parent.adjustCurrentHeat(-hullDraw);
     this.adjustCurrentHeat(hullDraw);
+    this.parent.recordHullHeatFlow(this.row, this.col, "fromHull", hullDraw);
     const selfDissipation = Math.min(vent.selfVent, this.currentHeat);
     this.currentVentCooling = selfDissipation;
     this.parent.ventHeat(selfDissipation);
@@ -288,7 +337,10 @@ export class RuntimeComponent {
       for (const [dr, dc] of neighborOffsets) {
         const neighbor = this.parent.getComponentAt(this.row + dr, this.col + dc);
         if (neighbor?.isCoolable()) {
+          const beforeHeat = neighbor.currentHeat;
           const rejected = neighbor.adjustCurrentHeat(-vent.sideVent);
+          const cooled = Math.max(0, beforeHeat - neighbor.currentHeat);
+          if (cooled > 0) this.parent.recordComponentHeatFlow(neighbor.row, neighbor.col, this.row, this.col, cooled);
           const dissipated = vent.sideVent + rejected;
           this.parent.ventHeat(dissipated);
           this.currentVentCooling += dissipated;
@@ -310,16 +362,27 @@ export class RuntimeComponent {
         let add = this.calculateExchange(neighbor.currentHeat, neighbor.getMaxHeat(), exchanger.switchSide, exchanger.switchSide);
         myHeat -= add;
         if (add > 0) this.currentComponentHeating += add;
+        const beforeHeat = neighbor.currentHeat;
         add = neighbor.adjustCurrentHeat(add);
+        const delta = neighbor.currentHeat - beforeHeat;
+        if (delta > 0) this.parent.recordComponentHeatFlow(this.row, this.col, neighbor.row, neighbor.col, delta);
+        else if (delta < 0) this.parent.recordComponentHeatFlow(neighbor.row, neighbor.col, this.row, this.col, -delta);
         myHeat += add;
       }
     }
     if (exchanger.switchReactor > 0) {
       const add = this.calculateExchange(this.parent.currentHeat, this.parent.maxHeat, exchanger.switchReactor, exchanger.switchSide);
       myHeat -= add;
+      const beforeHeat = this.parent.currentHeat;
       this.parent.adjustCurrentHeat(add);
-      if (add > 0) this.currentHullHeating = add;
-      else this.currentHullCooling = -add;
+      const delta = this.parent.currentHeat - beforeHeat;
+      if (delta > 0) {
+        this.currentHullHeating = delta;
+        this.parent.recordHullHeatFlow(this.row, this.col, "toHull", delta);
+      } else if (delta < 0) {
+        this.currentHullCooling = -delta;
+        this.parent.recordHullHeatFlow(this.row, this.col, "fromHull", -delta);
+      }
     }
     this.adjustCurrentHeat(myHeat);
   }
@@ -397,15 +460,27 @@ export class RuntimeComponent {
       .map(([dr, dc]) => this.parent!.getComponentAt(this.row + dr, this.col + dc))
       .filter((component): component is RuntimeComponent => !!component?.isHeatAcceptor());
     if (neighbors.length === 0) {
+      const beforeHeat = this.parent.currentHeat;
       this.parent.adjustCurrentHeat(heat);
-      this.currentHullHeating = heat;
+      const delta = this.parent.currentHeat - beforeHeat;
+      this.currentHullHeating = Math.max(0, delta);
+      this.parent.recordHullHeatFlow(this.row, this.col, "toHull", Math.max(0, delta));
       return;
     }
     this.currentComponentHeating = heat;
     const share = Math.trunc(heat / neighbors.length);
-    for (const neighbor of neighbors) neighbor.adjustCurrentHeat(share);
+    for (const neighbor of neighbors) {
+      const beforeHeat = neighbor.currentHeat;
+      neighbor.adjustCurrentHeat(share);
+      const delta = neighbor.currentHeat - beforeHeat;
+      if (delta > 0) this.parent.recordComponentHeatFlow(this.row, this.col, neighbor.row, neighbor.col, delta);
+    }
     const remainder = heat % neighbors.length;
-    neighbors[0].adjustCurrentHeat(remainder);
+    const first = neighbors[0];
+    const beforeHeat = first.currentHeat;
+    first.adjustCurrentHeat(remainder);
+    const delta = first.currentHeat - beforeHeat;
+    if (delta > 0) this.parent.recordComponentHeatFlow(this.row, this.col, first.row, first.col, delta);
   }
 
   private calculateExchange(otherHeat: number, otherMaxHeat: number, cap: number, lowHeatReference: number) {

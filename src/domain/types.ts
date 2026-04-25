@@ -10,7 +10,7 @@ export type ComponentKind =
   | "condensator"
   | "reflector";
 
-export type SourceMod = "IC2" | "GT5.08" | "GT5.09" | "GTNH" | "Coaxium" | "GoodGenerator";
+export type SourceMod = "IC2" | "GTNH" | "GoodGenerator";
 
 export interface FuelRodSpec {
   energyMult: number;
@@ -69,7 +69,7 @@ export interface SimulationConfig {
   resumeTemp: number;
   maxSimulationTicks: number;
   mcVersion: "1.7.10" | "1.12.2";
-  gtMode: "none" | "GT5.09" | "GTNH";
+  gtMode: "none" | "GTNH";
 }
 
 export interface ReactorDesign {
@@ -96,6 +96,21 @@ export interface ComponentSnapshot {
   broken: boolean;
 }
 
+export interface ComponentHeatFlow {
+  fromRow: number;
+  fromCol: number;
+  toRow: number;
+  toCol: number;
+  amount: number;
+}
+
+export interface HullHeatFlow {
+  row: number;
+  col: number;
+  direction: "toHull" | "fromHull";
+  amount: number;
+}
+
 export interface TickSnapshot {
   tick: number;
   active: boolean;
@@ -107,6 +122,8 @@ export interface TickSnapshot {
   huPerTick: number;
   ventedHeat: number;
   components: ComponentSnapshot[];
+  componentHeatFlows: ComponentHeatFlow[];
+  hullHeatFlows: HullHeatFlow[];
   eventCount: number;
 }
 

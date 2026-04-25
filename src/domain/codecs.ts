@@ -53,6 +53,8 @@ class BigintStorage {
 export function encodeReactorCode(design: ReactorDesign) {
   const storage = new BigintStorage();
   const config = design.config;
+  const componentMax = 72;
+  const maxComponentHeat = 1_000_000_000;
   storage.store(config.maxSimulationTicks, 5_000_000);
   storage.store(config.usingReactorCoolantInjectors ? 1 : 0, 1);
   storage.store(config.fluid ? 1 : 0, 1);
@@ -78,22 +80,22 @@ export function encodeReactorCode(design: ReactorDesign) {
         if (hasCustom) {
           if (config.automated) {
             storage.store(cell.reactorPause ?? defaultPause, 10_000);
-            storage.store(cell.automationThreshold ?? defaultThreshold, 1_080_000);
+            storage.store(cell.automationThreshold ?? defaultThreshold, maxComponentHeat);
           }
-          storage.store(cell.initialHeat ?? 0, 1_080_000);
+          storage.store(cell.initialHeat ?? 0, maxComponentHeat);
           storage.store(1, 1);
         } else {
           storage.store(0, 1);
         }
-        storage.store(cell.componentId, 58);
+        storage.store(cell.componentId, componentMax);
       } else {
-        storage.store(0, 58);
+        storage.store(0, componentMax);
       }
     }
   }
   storage.store(config.automated ? 1 : 0, 1);
   storage.store(config.pulsed ? 1 : 0, 1);
-  storage.store(3, 255);
+  storage.store(4, 255);
   return `erp=${storage.outputBase64()}`;
 }
 
