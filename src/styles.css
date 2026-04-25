@@ -123,10 +123,44 @@ textarea {
   background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 18px);
 }
 
-.hero-title {
+.info-bar {
   position: relative;
   z-index: 1;
   min-width: 0;
+  display: grid;
+  gap: 0.28rem;
+}
+
+.info-bar-label {
+  margin: 0;
+  color: var(--cyan);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.info-bar-title {
+  margin: 0;
+  font-family: "Barlow Condensed", "Microsoft YaHei UI", sans-serif;
+  letter-spacing: 0.02em;
+  font-size: clamp(1.28rem, 1.72vw, 1.95rem);
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.info-bar-detail {
+  max-width: 760px;
+  margin: 0;
+  color: #b8c7d8;
+  font-size: 0.8rem;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 .eyebrow {
@@ -160,16 +194,6 @@ h3 {
   margin: 0.55rem 0 0.35rem;
   color: #cbdcf0;
   font-size: 1.05rem;
-}
-
-.hero-copy {
-  max-width: 760px;
-  margin: 0.3rem 0 0;
-  color: #b8c7d8;
-  font-size: 0.82rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .hero-actions {
@@ -479,6 +503,45 @@ label {
   color: var(--muted);
 }
 
+.reactor-header-meta {
+  display: grid;
+  justify-items: end;
+  gap: 0.28rem;
+}
+
+.reactor-flow-legend {
+  margin: 0;
+  display: flex;
+  gap: 0.72rem;
+  align-items: center;
+  color: rgba(201, 219, 237, 0.84);
+  font-size: 0.68rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.reactor-flow-legend span {
+  display: inline-flex;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.legend-triangle {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 8px solid rgba(255, 154, 79, 0.95);
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(103, 255, 223, 0.95);
+  box-shadow: 0 0 10px rgba(62, 228, 196, 0.45);
+}
+
 .reactor-grid {
   --reactor-gap: 7px;
   --reactor-cell: clamp(30px, min(calc((100cqw - 104px) / 9), calc((100cqh - 147px) / 6)), 78px);
@@ -494,10 +557,11 @@ label {
 
 .reactor-cell {
   position: relative;
+  isolation: isolate;
   width: var(--reactor-cell);
   height: var(--reactor-cell);
   aspect-ratio: 1;
-  overflow: hidden;
+  overflow: visible;
   border-radius: 13px;
   padding: 0;
   background:
@@ -507,9 +571,23 @@ label {
 }
 
 .reactor-cell::before {
-  content: "";
+  content: none;
+}
+
+.cell-heat-clip {
   position: absolute;
-  inset: auto 0 0;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.cell-heat-fill {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
   height: calc(var(--heat) * 100%);
   background: linear-gradient(0deg, rgba(255, 54, 63, 0.72), rgba(255, 173, 51, 0.22));
   transition: height 220ms ease;
@@ -519,6 +597,7 @@ label {
   content: "";
   position: absolute;
   inset: 0;
+  z-index: 1;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: inherit;
 }
@@ -529,7 +608,7 @@ label {
 
 .reactor-cell img {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   width: 60%;
   height: 60%;
   image-rendering: pixelated;
@@ -537,10 +616,136 @@ label {
   filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.45));
 }
 
+.flow-triangle {
+  --triangle-size: clamp(6px, calc(var(--reactor-cell) * 0.13), 12px);
+  --tx: -50%;
+  --ty: -50%;
+  --rot: 0deg;
+  --drift-x: 0px;
+  --drift-y: 0px;
+  position: absolute;
+  z-index: 4;
+  width: var(--triangle-size);
+  height: var(--triangle-size);
+  pointer-events: none;
+  clip-path: polygon(50% 0, 0 100%, 100% 100%);
+  background: var(--flow-color, rgba(255, 174, 86, 0.96));
+  box-shadow: 0 0 10px var(--flow-glow, rgba(255, 138, 42, 0.42));
+  opacity: 0;
+  transform: translate(var(--tx), var(--ty)) translate(0, 0) rotate(var(--rot));
+  animation: flowTickFlash 960ms linear forwards;
+}
+
+.dir-up {
+  --rot: 0deg;
+  --drift-x: 0px;
+  --drift-y: -7px;
+}
+
+.dir-right {
+  --rot: 90deg;
+  --drift-x: 7px;
+  --drift-y: 0px;
+}
+
+.dir-down {
+  --rot: 180deg;
+  --drift-x: 0px;
+  --drift-y: 7px;
+}
+
+.dir-left {
+  --rot: 270deg;
+  --drift-x: -7px;
+  --drift-y: 0px;
+}
+
+.place-up {
+  top: calc(var(--reactor-gap) * -0.5);
+  left: 50%;
+  --tx: -50%;
+  --ty: 0;
+}
+
+.place-right {
+  top: 50%;
+  right: calc(var(--reactor-gap) * -0.5);
+  --tx: 0;
+  --ty: -50%;
+}
+
+.place-down {
+  bottom: calc(var(--reactor-gap) * -0.5);
+  left: 50%;
+  --tx: -50%;
+  --ty: 0;
+}
+
+.place-left {
+  top: 50%;
+  left: calc(var(--reactor-gap) * -0.5);
+  --tx: 0;
+  --ty: -50%;
+}
+
+.hull-dot {
+  --dot-size: clamp(6px, calc(var(--reactor-cell) * 0.15), 12px);
+  position: absolute;
+  z-index: 5;
+  width: var(--dot-size);
+  height: var(--dot-size);
+  top: 6px;
+  right: 6px;
+  left: auto;
+  bottom: auto;
+  transform: none;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  animation: hullTickFlash 960ms linear forwards;
+}
+
+.hull-release {
+  background: rgba(255, 140, 92, 0.95);
+  box-shadow: 0 0 14px rgba(255, 105, 72, 0.45);
+}
+
+.hull-absorb {
+  background: rgba(103, 255, 223, 0.95);
+  box-shadow: 0 0 14px rgba(62, 228, 196, 0.45);
+}
+
+@keyframes flowTickFlash {
+  0% {
+    opacity: 1;
+    transform: translate(var(--tx), var(--ty)) translate(0, 0) rotate(var(--rot));
+  }
+  14% {
+    opacity: 1;
+    transform: translate(var(--tx), var(--ty)) translate(0, 0) rotate(var(--rot));
+  }
+  100% {
+    opacity: 0.5;
+    transform: translate(var(--tx), var(--ty)) translate(var(--drift-x), var(--drift-y)) rotate(var(--rot));
+  }
+}
+
+@keyframes hullTickFlash {
+  0% {
+    opacity: calc(0.9 + var(--dot-intensity, 0.2) * 0.1);
+  }
+  14% {
+    opacity: calc(0.9 + var(--dot-intensity, 0.2) * 0.1);
+  }
+  100% {
+    opacity: calc(0.46 + var(--dot-intensity, 0.2) * 0.08);
+  }
+}
+
 .cell-coord,
 .cell-value {
   position: absolute;
-  z-index: 2;
+  z-index: 3;
   font-size: 0.6rem;
   color: rgba(234, 243, 255, 0.72);
 }

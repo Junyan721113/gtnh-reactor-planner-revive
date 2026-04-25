@@ -6,6 +6,8 @@ interface Props {
   disabled: boolean;
   speeds: number[];
   onSpeedChange: (speed: number) => void;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
 }
 
 function nextSpeed(current: number, speeds: number[]) {
@@ -14,7 +16,7 @@ function nextSpeed(current: number, speeds: number[]) {
   return speeds[(index + 1) % speeds.length] ?? speeds[0];
 }
 
-export function SpeedButton({ initialSpeed, disabled, speeds, onSpeedChange }: Props) {
+export function SpeedButton({ initialSpeed, disabled, speeds, onSpeedChange, onMouseEnter, onMouseLeave }: Props) {
   const [displaySpeed, setDisplaySpeed] = useState(initialSpeed);
 
   useEffect(() => {
@@ -28,7 +30,14 @@ export function SpeedButton({ initialSpeed, disabled, speeds, onSpeedChange }: P
   };
 
   return (
-    <button className="speed-button" onClick={handleClick} disabled={disabled} title="点击循环切换徐进速度">
+    <button
+      className="speed-button"
+      onClick={handleClick}
+      disabled={disabled}
+      title="点击循环切换徐进速度"
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
       <Zap size={18} /> 速度：{displaySpeed}x
     </button>
   );

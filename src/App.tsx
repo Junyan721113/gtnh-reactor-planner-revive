@@ -21,13 +21,15 @@ import { decodeReactorCode, encodeReactorCode } from "./domain/codecs";
 import { createEmptyDesign } from "./domain/defaults";
 import type { ReactorDesign, SimulationEvent, SimulationResult, TickSnapshot } from "./domain/types";
 import { simulationToCsv } from "./sim/csv";
+import { showInfo, resetInfo, type InfoBarMessage } from "./state/infoBarStore";
+import { getSelectedId, useSelectedId } from "./state/selectionStore";
 import { ConfigPanel } from "./ui/ConfigPanel";
 import { EventsPanel } from "./ui/EventsPanel";
+import { InfoBar } from "./ui/InfoBar";
 import { MetricCard, type MetricPoint } from "./ui/MetricCard";
 import { Palette } from "./ui/Palette";
 import { ReactorGrid } from "./ui/ReactorGrid";
 import { SpeedButton } from "./ui/SpeedButton";
-import { getSelectedId, useSelectedId } from "./state/selectionStore";
 import { fmt } from "./utils/format";
 import type { WorkerResponse } from "./worker/simulationWorker";
 
@@ -103,6 +105,28 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const workerRef = useRef<Worker | null>(null);
   const workerKindRef = useRef<WorkerKind | null>(null);
+
+  const bindInfoHover = (title: string, detail: string, onLeave: () => void = resetInfo) => ({
+    onMouseEnter: () => showInfo({ title, detail }),
+    onMouseLeave: onLeave,
+  });
+
+  const handleExternalInfoChange = (message: InfoBarMessage | null) => {
+    if (message) {
+      showInfo(message);
+      return;
+    }
+    resetInfo();
+  };
+
+  const codePanelInfo: InfoBarMessage = {
+    title: "Reactor Code",
+    detail: "支持 erp= 编码导入/导出，可保存设计 JSON 并导出本次模拟 CSV。",
+  };
+
+  const showCodePanelInfo = () => {
+    showInfo(codePanelInfo);
+  };
 
   const attachWorker = (worker: Worker) => {
     worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
@@ -377,27 +401,40 @@ export default function App() {
   return (
     <main className="app-shell">
       <section className="hero-panel">
-        <div className="hero-title">
-          <p className="eyebrow">GTNH / IC2 Experimental</p>
-          <h1>反应堆模拟器重制版</h1>
-          <p className="hero-copy">Worker 模拟核心、热图、状态曲线、事件流</p>
-        </div>
+        <InfoBar />
 
         <div className="hero-actions">
-          <button onClick={runSingleStep} disabled={simulationRunning || stepBusy}>
+          <button
+            {...bindInfoHover("单步判定", "执行 1 次 tick 判定并保留当前进度，不会重置徐进计时。")}
+            onClick={runSingleStep}
+            disabled={simulationRunning || stepBusy}
+          >
             <StepForward size={18} /> 单步
           </button>
           <button
+            {...bindInfoHover(
+              xuJinRunning ? "徐进已运行" : "徐进模式",
+              xuJinRunning ? "暂停持续判定并保持当前进度。" : "按当前速度持续判定，可与单步共享同一进度。",
+            )}
             onClick={mode === "xujin" ? (xuJinRunning ? pauseXuJin : resumeXuJin) : startXuJin}
             disabled={simulationRunning || stepBusy}
           >
             {mode === "xujin" ? xuJinRunning ? <Pause size={18} /> : <Play size={18} /> : <Gauge size={18} />}
             {xuJinRunning ? "暂停" : "徐进"}
           </button>
-          <button className="primary" onClick={runSimulation} disabled={hardBusy}>
+          <button
+            className="primary"
+            {...bindInfoHover("高速模拟", "以尽可能快的速度运行到结束，不受徐进速度档位限制。")}
+            onClick={runSimulation}
+            disabled={hardBusy}
+          >
             <Play size={18} /> 模拟
           </button>
-          <button onClick={stopCurrentRun} disabled={!canRestart}>
+          <button
+            {...bindInfoHover("停止", "终止当前会话并从头开始，清空快照、事件与曲线。")}
+            onClick={stopCurrentRun}
+            disabled={!canRestart}
+          >
             <Square size={16} /> 停止
           </button>
           <SpeedButton
@@ -405,8 +442,13 @@ export default function App() {
             disabled={simulationRunning || stepBusy}
             onSpeedChange={updateXuJinSpeed}
             speeds={XUJIN_SPEEDS}
+            {...bindInfoHover("速度档位", "切换徐进速度倍率（1x 到 10000x），用于控制徐进节奏。")}
           />
-          <button onClick={clearDesign} disabled={hardBusy}>
+          <button
+            {...bindInfoHover("清空布局", "清空堆芯元件并重置当前运行状态。")}
+            onClick={clearDesign}
+            disabled={hardBusy}
+          >
             <RotateCcw size={18} /> 清空
           </button>
         </div>
@@ -455,23 +497,43 @@ export default function App() {
 
       <section className="workspace">
         <aside className="side-panel left-panel">
-          <ConfigPanel config={design.config} onChange={(patch) => updateDesign((draft) => Object.assign(draft.config, patch))} />
-          <div className="code-panel">
+          <div
+            onMouseEnter={() =>
+              showInfo({
+                title: "模拟配置",
+                detail: "配置流体堆、脉冲、自动替换、温度阈值和最大秒数，改动后会重新模拟。",
+              })
+            }
+            onMouseLeave={resetInfo}
+          >
+            <ConfigPanel config={design.config} onChange={(patch) => updateDesign((draft) => Object.assign(draft.config, patch))} />
+          </div>
+          <div className="code-panel" onMouseEnter={showCodePanelInfo} onMouseLeave={resetInfo}>
             <div className="panel-title">Reactor Code</div>
-            <textarea value={codeText} onChange={(event) => setCodeText(event.target.value)} placeholder="erp=..." disabled={running} />
+            <textarea
+              {...bindInfoHover("Reactor Code 输入框", "粘贴或编辑 erp= 编码，再点击“导入代码”应用到当前堆芯。", showCodePanelInfo)}
+              value={codeText}
+              onChange={(event) => setCodeText(event.target.value)}
+              placeholder="erp=..."
+              disabled={running}
+            />
             <div className="button-row">
-              <button onClick={exportCode} disabled={running}>
+              <button {...bindInfoHover("导出代码", "将当前反应堆布局编码为 erp= 文本，并写入剪贴板。", showCodePanelInfo)} onClick={exportCode} disabled={running}>
                 <Upload size={16} /> 导出代码
               </button>
-              <button onClick={importCode} disabled={running}>
+              <button {...bindInfoHover("导入代码", "用输入框中的 erp= 文本覆盖当前布局并重置运行状态。", showCodePanelInfo)} onClick={importCode} disabled={running}>
                 <Download size={16} /> 导入代码
               </button>
             </div>
             <div className="button-row">
-              <button onClick={() => void saveDesignFile()}>
+              <button {...bindInfoHover("保存设计", "弹出路径选择窗口，将当前设计保存为 JSON 文件。", showCodePanelInfo)} onClick={() => void saveDesignFile()}>
                 <Save size={16} /> 保存设计
               </button>
-              <button disabled={!result} onClick={() => void exportCsvFile()}>
+              <button
+                {...bindInfoHover("导出 CSV", "弹出路径选择窗口，导出本次模拟的逐 tick 统计数据。", showCodePanelInfo)}
+                disabled={!result}
+                onClick={() => void exportCsvFile()}
+              >
                 <Download size={16} /> 导出 CSV
               </button>
             </div>
@@ -479,12 +541,22 @@ export default function App() {
         </aside>
 
         <section className="reactor-stage">
-          <ReactorGrid design={design} latest={latest} onCellClick={placeCell} />
+          <ReactorGrid design={design} latest={latest} onCellClick={placeCell} onHoverInfoChange={handleExternalInfoChange} />
         </section>
 
         <aside className="side-panel">
-          <Palette />
-          <EventsPanel events={events} />
+          <Palette onHoverInfoChange={handleExternalInfoChange} />
+          <div
+            onMouseEnter={() =>
+              showInfo({
+                title: "事件流",
+                detail: "按时间倒序显示阈值、损坏、耗尽与完成事件。优先关注 danger 和 warning 级别。",
+              })
+            }
+            onMouseLeave={resetInfo}
+          >
+            <EventsPanel events={events} />
+          </div>
         </aside>
       </section>
     </main>

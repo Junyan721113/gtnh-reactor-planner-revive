@@ -1,4 +1,4 @@
-import { memo, type ReactNode, useId } from "react";
+import { memo, type ReactNode, useId, useMemo, useState } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 export interface MetricPoint {
@@ -32,12 +32,19 @@ function compactSeries(series: MetricPoint[], limit = 180) {
 export const MetricCard = memo(function MetricCard({ icon, label, value, detail, tone, series = [] }: Props) {
   const rawId = useId().replace(/:/g, "");
   const gradientId = `metric-gradient-${rawId}`;
+  const [popoverOpen, setPopoverOpen] = useState(false);
   const color = TONE_COLORS[tone];
   const hasChart = series.length > 1;
-  const miniSeries = compactSeries(series);
+  const miniSeries = useMemo(() => compactSeries(series), [series]);
 
   return (
-    <article className={`metric-card tone-${tone} ${hasChart ? "has-chart" : "no-chart"}`}>
+    <article
+      className={`metric-card tone-${tone} ${hasChart ? "has-chart" : "no-chart"}`}
+      onMouseEnter={() => setPopoverOpen(true)}
+      onMouseLeave={() => setPopoverOpen(false)}
+      onFocus={() => setPopoverOpen(true)}
+      onBlur={() => setPopoverOpen(false)}
+    >
       <div className="metric-icon">{icon}</div>
       <div className="metric-copy">
         <p>{label}</p>
@@ -60,29 +67,31 @@ export const MetricCard = memo(function MetricCard({ icon, label, value, detail,
               </AreaChart>
             </ResponsiveContainer>
           </div>
-          <div className="metric-chart-popover">
-            <div className="popover-title">
-              <span>{label} 完整曲线</span>
-              <small>{series.length.toLocaleString()} 个采样点</small>
+          {popoverOpen && (
+            <div className="metric-chart-popover">
+              <div className="popover-title">
+                <span>{label} 完整曲线</span>
+                <small>{series.length.toLocaleString()} 个采样点</small>
+              </div>
+              <div className="popover-chart">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={series}>
+                    <defs>
+                      <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={color} stopOpacity={0.5} />
+                        <stop offset="100%" stopColor={color} stopOpacity={0.04} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid stroke="rgba(255,255,255,.08)" />
+                    <XAxis dataKey="tick" stroke="#8ea4b8" tick={{ fontSize: 11 }} />
+                    <YAxis stroke="#8ea4b8" tick={{ fontSize: 11 }} />
+                    <Tooltip contentStyle={{ background: "#0d1724", border: "1px solid rgba(255,255,255,.14)", borderRadius: 12 }} />
+                    <Area type="monotone" dataKey="value" stroke={color} fill={`url(#${gradientId})`} strokeWidth={2} dot={false} isAnimationActive={false} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-            <div className="popover-chart">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={series}>
-                  <defs>
-                    <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={color} stopOpacity={0.5} />
-                      <stop offset="100%" stopColor={color} stopOpacity={0.04} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid stroke="rgba(255,255,255,.08)" />
-                  <XAxis dataKey="tick" stroke="#8ea4b8" tick={{ fontSize: 11 }} />
-                  <YAxis stroke="#8ea4b8" tick={{ fontSize: 11 }} />
-                  <Tooltip contentStyle={{ background: "#0d1724", border: "1px solid rgba(255,255,255,.14)", borderRadius: 12 }} />
-                  <Area type="monotone" dataKey="value" stroke={color} fill={`url(#${gradientId})`} strokeWidth={2} dot={false} isAnimationActive={false} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+          )}
         </>
       )}
     </article>
