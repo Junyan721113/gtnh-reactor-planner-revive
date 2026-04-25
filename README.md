@@ -4,6 +4,8 @@
 
 项目目标是在尽量保留旧版 `Ic2ExpReactorPlanner.jar` 模拟语义的基础上，提供更现代的桌面 UI、GTNH 元件清单、动态热流可视化、状态曲线和事件流。
 
+<img width="1616" height="939" alt="}}WCL(Y$C)_O6{313LM${83" src="https://github.com/user-attachments/assets/37a0713d-62b9-4237-b2e0-a7550ef50023" />
+
 ## 技术栈
 
 - Tauri 2
