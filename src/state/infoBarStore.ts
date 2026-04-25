@@ -7,7 +7,8 @@ export type InfoBarMessage = {
 
 export const DEFAULT_INFO_BAR: InfoBarMessage = {
   title: "GTNH / IC2 Experimental · 反应堆模拟器重制版",
-  detail: "Worker 模拟核心、热图、状态曲线、事件流",
+  detail:
+    "GitHub: https://github.com/Junyan721113/gtnh-reactor-planner-revive · Worker 模拟核心、热图、状态曲线、事件流",
 };
 
 type Listener = () => void;
