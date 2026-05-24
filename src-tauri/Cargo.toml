@@ -1,6 +1,6 @@
 [package]
 name = "ic2-exp-reactor-planner-modern"
-version = "0.1.0"
+version = "0.1.1"
 description = "Modern GTNH/IC2 Experimental Reactor Planner"
 authors = ["Ic2ExpReactorPlanner contributors"]
 edition = "2021"
