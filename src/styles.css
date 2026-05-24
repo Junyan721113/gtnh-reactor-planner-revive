@@ -822,6 +822,34 @@ label {
   padding-right: 3px;
 }
 
+.palette-sections {
+  display: grid;
+  gap: 8px;
+  max-height: min(230px, 30vh);
+  overflow: auto;
+  padding-right: 3px;
+}
+
+.palette-section {
+  display: grid;
+  gap: 5px;
+}
+
+.palette-section .palette-grid {
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
+}
+
+.palette-section-title {
+  color: #8ea6bc;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
 .palette-item {
   position: relative;
   display: grid;

@@ -28,7 +28,8 @@
 - 速度状态、当前选中元件状态、信息栏状态应尽量脱离 `App` 根渲染路径。
 - 信息栏使用 `src/state/infoBarStore.ts` 和 `src/ui/InfoBar.tsx`，避免 hover 时整页重渲染。
 - `src/ui/MetricCard.tsx` 的完整 5000 点 Recharts 曲线只在 hover 时挂载，不要默认渲染。
-- 元件数据以 GTNH 为目标，集中在 `src/domain/components.ts`。当前燃料族包括 IC2 基础燃料、Thorium、High Density Uranium/Plutonium、Excited Uranium/Plutonium、Naquadah、Naquadria、Tiberium、The Core、Glowstone、Lithium。
+- 元件数据以用户本地 `E:\Games\GTNH - 2.1.2.3\.minecraft\versions\GTNH daily` 实例为目标，集中在 `src/domain/components.ts`。当前燃料族包括 IC2 基础燃料、Thorium、High Density Uranium/Plutonium、Excited Uranium/Plutonium、Naquadah、Naquadria、Tiberium、The Core、Glowstone、Lithium。
+- 当前冷却单元包括 IC2 10k/30k/60k、GregTech 氦 60k/180k/360k、NaK 60k/180k/360k、空间 180k/360k/540k/1080k。
 - reactor code 导出为 revision 4，支持 58 号以上元件 ID。
 - 热流箭头显示的是元件间净热流，位于槽位边界；颜色映射按 GTNH 热量档位设计，不只是 `amount / tickFlux`。
 
@@ -49,7 +50,6 @@
 
 ## 风险
 - 部分 GTNH 燃料参数是当前简化 IC2 风格模拟模型下的近似映射。
-- Lithium 当前使用已有占位贴图，因为本地没有找到专用 Lithium reactor-cell 贴图。
 - 用户 hover 状态卡并打开完整曲线时，大量 Recharts 数据仍有渲染成本。
 - README 可能仍有旧贴图策略描述；不要只看 README 判断当前行为，应以代码为准。
 

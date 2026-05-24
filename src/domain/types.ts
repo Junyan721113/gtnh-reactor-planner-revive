@@ -10,7 +10,7 @@ export type ComponentKind =
   | "condensator"
   | "reflector";
 
-export type SourceMod = "IC2" | "GTNH" | "GoodGenerator";
+export type SourceMod = "IC2" | "GregTech" | "GTNH" | "GoodGenerator";
 
 export interface FuelRodSpec {
   energyMult: number;
