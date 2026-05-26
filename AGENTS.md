@@ -21,6 +21,7 @@
 - 不要重新引入 Coaxium/Cesium 反应堆元件，也不要恢复非 GTNH 目标的元件分类。
 - 保留当前组件库图标视觉；不要再推进已经放弃的“离线 4x 贴图 + 1:1 显示”方案，除非用户明确要求。
 - 用户只要求 UI 渲染或性能修复时，不要改动模拟规则。
+- React state 更新必须保持不可变语义；不要通过原地 `push`、`shift`、`splice` 后返回同一引用来更新曲线、事件或快照状态。
 
 ## 已定决策
 - 框架：Tauri 2 + React + TypeScript + Vite。
@@ -31,22 +32,26 @@
 - 元件数据以用户本地 `E:\Games\GTNH - 2.1.2.3\.minecraft\versions\GTNH daily` 实例为目标，集中在 `src/domain/components.ts`。当前燃料族包括 IC2 基础燃料、Thorium、High Density Uranium/Plutonium、Excited Uranium/Plutonium、Naquadah、Naquadria、Tiberium、The Core、Glowstone、Lithium。
 - 当前冷却单元包括 IC2 10k/30k/60k、GregTech 氦 60k/180k/360k、NaK 60k/180k/360k、空间 180k/360k/540k/1080k。
 - reactor code 导出为 revision 4，支持 58 号以上元件 ID。
+- revision 4 reactor code 的组件编码基数固定为 `72`。不要改成 `Math.max(...COMPONENT_BY_ID.keys())`；新增超过 72 的元件时应升级 revision 并补兼容测试。
 - 热流箭头显示的是元件间净热流，位于槽位边界；颜色映射按 GTNH 热量档位设计，不只是 `amount / tickFlux`。
+- `StepwiseSimulator.stepBatch()` 必须保留批量 tick 中所有中间事件；Worker 的徐进和高速模拟依赖这个返回值推送事件流。
 
 ## 当前状态
 - 最近验证通过的命令：
 - `npx tsc --noEmit`
 - `npm run test -- --reporter=verbose`
-- `npm run build`
-- `npm run build` 仍会报告既有 Vite chunk size 警告，目前不视为失败。
-- 当前工作区有较多未提交改动，涉及 UI、模拟可视化、codec、元件清单和信息栏。编辑前先看 `git status --short`。
+- `npm run tauri:build`
+- `npm run tauri:build` 会间接运行 `npm run build`。现有 Vite chunk size 警告目前不视为失败。
+- 当前工作区有较多未提交改动，涉及 UI、模拟可视化、codec、元件清单、信息栏和燃料统计。编辑前先看 `git status --short`。
 
 ## 下一步建议
-- 如果“模拟完成”状态再次卡顿，优先检查根级 state 更新，尤其是 hover handler 和图表 props。
+- 如果“模拟完成”状态再次卡顿，优先检查根级 state 更新，尤其是 hover handler、图表 props、曲线 state 是否返回同一引用。
 - 如果再次调整元件数据，应同时更新 `src/domain/components.ts`、`src/ui/Palette.tsx` 和 codec 测试。
-- 如果新增当前范围之外的元件 ID，应同步更新 `src/domain/codecs.ts` 的组件编号上限，并补 reactor code 往返测试。
+- 如果新增当前范围之外的元件 ID，不要直接改变 revision 4 的 `72` 基数；应升级 reactor code revision，并补旧 code 解码和新 code 往返测试。
+- 如果改 Worker 批处理或徐进/模拟调度，同时检查 `StepwiseSimulator.stepBatch()` 是否仍保留中间事件。
 - 如果改热流渲染，同时检查 `src/sim/runtime.ts` 的热流记录和 `src/ui/ReactorGrid.tsx` 的 marker 渲染。
 - 如果用户质疑 GTNH 燃料公式，先核对 GTNH wiki 或用户给出的 `MCTBL/GTNH_Reactor_Simulator`，再改公式。
+- `RuntimeComponent.adjustCurrentHeat()` 的冷凝单元容量应按 `maxHeat - currentHeat` 计算剩余可吸收热量，已有边界测试覆盖；若继续调整其他拒收热量行为，仍应单独做 golden case 验证。
 
 ## 风险
 - 部分 GTNH 燃料参数是当前简化 IC2 风格模拟模型下的近似映射。
@@ -66,5 +71,7 @@
 - `src/ui/ReactorGrid.tsx`：6x9 网格、hover 信息、热流 marker、热量条渲染。
 - `src/ui/MetricCard.tsx`：状态卡、小曲线和 hover 完整曲线。
 - `src/ui/Palette.tsx`：组件库 tab 和 hover 描述。
+- `src/ui/FuelStatsPanel.tsx`：燃料耐久、单位燃料产出和增殖进度统计。
+- `src/ui/RunDetailsPanel.tsx`：统计块容器，整合燃料效率和事件流。
 - `tests/codecs.test.ts`：reactor code 兼容测试。
-- `tests/simulator.test.ts`：基础模拟行为测试。
+- `tests/simulator.test.ts`：基础模拟行为、逐步模拟和批处理事件测试。
