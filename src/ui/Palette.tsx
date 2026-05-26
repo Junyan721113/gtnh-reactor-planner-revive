@@ -2,6 +2,7 @@ import { useState } from "react";
 import { COMPONENT_BY_ID, PALETTE_GROUPS as COMPONENT_PALETTE_GROUPS } from "../domain/components";
 import type { ComponentDefinition } from "../domain/types";
 import { setSelectedId, useSelectedId } from "../state/selectionStore";
+import { kindLabel } from "../utils/format";
 
 interface InfoBarMessage {
   title: string;
@@ -78,7 +79,7 @@ const PALETTE_SECTIONS: Record<string, PaletteSection[]> = {
     },
     {
       title: "特殊单棒",
-      description: "荧石与锂燃料棒，按本地 GTNH 实例中存在的反应堆物品保留。",
+      description: "荧石与锂增殖棒：不发电、不产热，接受相邻燃料棒脉冲并受堆温加速。",
       ids: [62, 63],
     },
   ],
@@ -135,26 +136,7 @@ const PALETTE_SECTIONS: Record<string, PaletteSection[]> = {
   ],
 };
 
-function kindLabel(kind: ComponentDefinition["kind"]) {
-  switch (kind) {
-    case "fuelRod":
-      return "燃料棒";
-    case "coolantCell":
-      return "冷却单元";
-    case "vent":
-      return "散热片";
-    case "exchanger":
-      return "热交换器";
-    case "plating":
-      return "反应堆隔板";
-    case "condensator":
-      return "冷凝冷却单元";
-    case "reflector":
-      return "反射板";
-    default:
-      return kind;
-  }
-}
+
 
 function describeComponent(component: ComponentDefinition) {
   const base = [`类型 ${kindLabel(component.kind)}`, `来源 ${component.sourceMod}`];
@@ -198,6 +180,14 @@ function describeComponent(component: ComponentDefinition) {
   }
   if (component.kind === "reflector") {
     base.push(`耐久 ${component.maxDamage.toLocaleString()}`);
+    return base.join("；");
+  }
+  if (component.kind === "breeder" && component.breeder) {
+    base.push(
+      `进度上限 ${component.maxDamage.toLocaleString()}`,
+      `相邻燃料棒脉冲增加进度`,
+      `堆温每 ${component.breeder.heatBonusStep.toLocaleString()} 点额外 +${component.breeder.heatBonusMultiplier}`,
+    );
     return base.join("；");
   }
   base.push(`最大热量 ${component.maxHeat.toLocaleString()}`, `最大损伤 ${component.maxDamage.toLocaleString()}`);

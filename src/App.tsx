@@ -24,11 +24,11 @@ import { simulationToCsv } from "./sim/csv";
 import { showInfo, resetInfo, type InfoBarMessage } from "./state/infoBarStore";
 import { getSelectedId, useSelectedId } from "./state/selectionStore";
 import { ConfigPanel } from "./ui/ConfigPanel";
-import { EventsPanel } from "./ui/EventsPanel";
 import { InfoBar } from "./ui/InfoBar";
 import { MetricCard, type MetricPoint } from "./ui/MetricCard";
 import { Palette } from "./ui/Palette";
 import { ReactorGrid } from "./ui/ReactorGrid";
+import { RunDetailsPanel } from "./ui/RunDetailsPanel";
 import { SpeedButton } from "./ui/SpeedButton";
 import { fmt } from "./utils/format";
 import type { WorkerResponse } from "./worker/simulationWorker";
@@ -546,17 +546,7 @@ export default function App() {
 
         <aside className="side-panel">
           <Palette onHoverInfoChange={handleExternalInfoChange} />
-          <div
-            onMouseEnter={() =>
-              showInfo({
-                title: "事件流",
-                detail: "按时间倒序显示阈值、损坏、耗尽与完成事件。优先关注 danger 和 warning 级别。",
-              })
-            }
-            onMouseLeave={resetInfo}
-          >
-            <EventsPanel events={events} />
-          </div>
+          <RunDetailsPanel events={events} latest={latest} summary={summary} onHoverInfoChange={handleExternalInfoChange} />
         </aside>
       </section>
     </main>

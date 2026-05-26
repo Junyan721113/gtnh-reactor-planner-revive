@@ -36,6 +36,7 @@ export const MetricCard = memo(function MetricCard({ icon, label, value, detail,
   const color = TONE_COLORS[tone];
   const hasChart = series.length > 1;
   const miniSeries = useMemo(() => compactSeries(series), [series]);
+  const popoverSeries = useMemo(() => compactSeries(series, 420), [series]);
 
   return (
     <article
@@ -70,12 +71,15 @@ export const MetricCard = memo(function MetricCard({ icon, label, value, detail,
           {popoverOpen && (
             <div className="metric-chart-popover">
               <div className="popover-title">
-                <span>{label} 完整曲线</span>
-                <small>{series.length.toLocaleString()} 个采样点</small>
+                <span>{label} 曲线预览</span>
+                <small>
+                  {series.length.toLocaleString()} 个采样点
+                  {popoverSeries.length < series.length ? `，显示 ${popoverSeries.length.toLocaleString()} 个` : ""}
+                </small>
               </div>
               <div className="popover-chart">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={series}>
+                  <AreaChart data={popoverSeries}>
                     <defs>
                       <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor={color} stopOpacity={0.5} />

@@ -394,7 +394,7 @@ h3 {
 .side-panel,
 .reactor-card,
 .chart-card,
-.events-panel,
+.run-details-panel,
 .config-panel,
 .code-panel,
 .palette-panel {
@@ -413,21 +413,86 @@ h3 {
 }
 
 .side-panel:not(.left-panel) {
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
 }
 
 .config-panel,
 .code-panel,
 .palette-panel,
-.events-panel {
+.run-details-panel {
   min-height: 0;
   padding: 12px;
   overflow: auto;
 }
 
+.run-details-panel {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 8px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.palette-panel {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.palette-panel > .panel-title,
+.run-details-title {
+  line-height: 1.2;
+}
+
+.run-details-title {
+  margin-bottom: 0;
+}
+
+.run-details-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.run-details-tabs button {
+  min-height: 30px;
+  border-radius: 9px;
+  color: #9fb3c7;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.run-details-tabs button.active {
+  border-color: rgba(99, 230, 190, 0.48);
+  color: #d6fff2;
+  background: rgba(99, 230, 190, 0.1);
+}
+
+.run-details-body,
+.fuel-stats-panel,
+.events-panel {
+  min-height: 0;
+}
+
+.run-details-body {
+  overflow: hidden;
+}
+
+.run-details-body .panel-title {
+  display: none;
+}
+
+.fuel-stats-panel {
+  height: 100%;
+  overflow: hidden;
+}
+
 .events-panel {
   display: flex;
   flex-direction: column;
+  height: 100%;
+  overflow: hidden;
 }
 
 .panel-title {
@@ -813,6 +878,11 @@ label {
   display: none;
 }
 
+.palette-group {
+  min-height: 0;
+  overflow: hidden;
+}
+
 .palette-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -839,6 +909,14 @@ label {
   max-height: none;
   overflow: visible;
   padding-right: 0;
+}
+
+.palette-group > .palette-grid,
+.palette-group > .palette-sections {
+  height: 100%;
+  max-height: none;
+  min-height: 0;
+  overflow: auto;
 }
 
 .palette-section-title {
@@ -936,6 +1014,72 @@ label {
 .muted {
   margin: 0;
   color: #b9c8d9;
+}
+
+.fuel-stats-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, auto) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.fuel-efficiency-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.fuel-efficiency-summary span {
+  border: 1px solid rgba(99, 230, 190, 0.16);
+  border-radius: 10px;
+  padding: 0.36rem 0.44rem;
+  color: #c9f7e7;
+  background: rgba(99, 230, 190, 0.07);
+  font-size: 0.72rem;
+  line-height: 1.15;
+}
+
+.fuel-stat-list {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-height: 0;
+  max-height: none;
+  overflow: auto;
+  padding-right: 3px;
+}
+
+.fuel-stat-item {
+  border-left: 3px solid #63e6be;
+  border-radius: 11px;
+  padding: 0.42rem 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.breeder-stat-item {
+  border-left-color: #ffd166;
+  background: rgba(255, 209, 102, 0.07);
+}
+
+.fuel-stat-item strong {
+  display: block;
+  overflow: hidden;
+  color: #f3fbff;
+  font-size: 0.76rem;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fuel-stat-item span {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.fuel-stat-item p {
+  margin: 0.16rem 0 0;
+  color: #b9c8d9;
+  font-size: 0.68rem;
+  line-height: 1.22;
 }
 
 .error-banner {

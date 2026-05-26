@@ -1,8 +1,8 @@
 import { type CSSProperties, useEffect, useMemo, useState } from "react";
 import { COMPONENT_BY_ID } from "../domain/components";
-import { REACTOR_COLS, REACTOR_ROWS, type ComponentSnapshot, type ReactorDesign, type TickSnapshot } from "../domain/types";
+import { REACTOR_COLS, REACTOR_ROWS, type ComponentSnapshot, type FuelRodDepletionStat, type ReactorDesign, type TickSnapshot } from "../domain/types";
 import { useSelectedId } from "../state/selectionStore";
-import { pct } from "../utils/format";
+import { kindLabel, pct } from "../utils/format";
 
 interface HoverInfoMessage {
   title: string;
@@ -170,25 +170,17 @@ function fmtNumber(value: number, digits = 0) {
   return value.toLocaleString(undefined, { maximumFractionDigits: digits });
 }
 
-function kindLabel(kind: string) {
-  switch (kind) {
-    case "fuelRod":
-      return "燃料棒";
-    case "coolantCell":
-      return "冷却单元";
-    case "vent":
-      return "散热器";
-    case "exchanger":
-      return "换热器";
-    case "plating":
-      return "装甲板";
-    case "condensator":
-      return "冷凝器";
-    case "reflector":
-      return "反射板";
-    default:
-      return kind;
-  }
+
+
+function buildFuelStatDetail(stat: FuelRodDepletionStat) {
+  const estimate = stat.estimatedDepletionTick ? `预计耗尽 ${fmtNumber(stat.estimatedDepletionTick)}s` : "尚未消耗";
+  return [
+    `耐久/tick ${fmtNumber(stat.lastDamageDelta, 2)}`,
+    `已用耐久 ${fmtNumber(stat.totalDamage)} / ${fmtNumber(stat.maxDamage)}`,
+    `EU/耐久 ${fmtNumber(stat.euPerDamage, 2)}`,
+    `产热/耐久 ${fmtNumber(stat.heatPerDamage, 2)}`,
+    estimate,
+  ].join("；");
 }
 
 function buildRunningDetail(state: ComponentSnapshot) {
@@ -270,6 +262,10 @@ export function ReactorGrid({ design, latest, onCellClick, onHoverInfoChange }: 
     return new Map(latest?.components.map((component) => [`${component.row}:${component.col}`, component]) ?? []);
   }, [latest]);
 
+  const fuelRodStats = useMemo(() => {
+    return new Map(latest?.fuelRodStats.map((stat) => [`${stat.row}:${stat.col}`, stat]) ?? []);
+  }, [latest]);
+
   const { mergedHeatMarkers, hullMarkers } = useMemo(() => {
     const heat = new Map<string, FlowMarker[]>();
     const hull = new Map<string, HullFlowMarker>();
@@ -325,10 +321,11 @@ export function ReactorGrid({ design, latest, onCellClick, onHoverInfoChange }: 
       };
     }
 
+    const fuelStat = fuelRodStats.get(`${row}:${col}`);
     if (state) {
       return {
         title: `${definition.name} · ${coord}`,
-        detail: buildRunningDetail(state),
+        detail: fuelStat ? `${buildRunningDetail(state)}；${buildFuelStatDetail(fuelStat)}` : buildRunningDetail(state),
       };
     }
 
@@ -341,7 +338,7 @@ export function ReactorGrid({ design, latest, onCellClick, onHoverInfoChange }: 
   useEffect(() => {
     if (!hoveredCell || !onHoverInfoChange) return;
     onHoverInfoChange(buildCellInfo(hoveredCell.row, hoveredCell.col));
-  }, [hoveredCell, latest, selectedId, design, onHoverInfoChange]);
+  }, [hoveredCell, latest, selectedId, design, onHoverInfoChange, fuelRodStats]);
 
   return (
     <section
