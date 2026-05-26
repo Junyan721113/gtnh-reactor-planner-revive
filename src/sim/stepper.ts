@@ -1,4 +1,14 @@
-import { REACTOR_COLS, REACTOR_ROWS, type ReactorDesign, type SimulationEvent, type SimulationResult, type SimulationSummary, type TickSnapshot } from "../domain/types";
+import {
+  REACTOR_COLS,
+  REACTOR_ROWS,
+  type BreederProgressStat,
+  type FuelRodDepletionStat,
+  type ReactorDesign,
+  type SimulationEvent,
+  type SimulationResult,
+  type SimulationSummary,
+  type TickSnapshot,
+} from "../domain/types";
 import { ReactorRuntime, type RuntimeComponent } from "./runtime";
 
 export interface StepwiseOptions {
@@ -12,6 +22,37 @@ export interface StepResult {
   events: SimulationEvent[];
   completed: boolean;
   result?: SimulationResult;
+}
+
+
+interface FuelRodStatAccumulator {
+  row: number;
+  col: number;
+  id: number;
+  name: string;
+  maxDamage: number;
+  totalDamage: number;
+  lastDamageDelta: number;
+  activeTicks: number;
+  totalEU: number;
+  totalHeat: number;
+  currentDamage: number;
+  estimatedDepletionTick?: number;
+  depleted: boolean;
+}
+
+interface BreederStatAccumulator {
+  row: number;
+  col: number;
+  id: number;
+  name: string;
+  maxDamage: number;
+  totalProgress: number;
+  lastProgressDelta: number;
+  activeTicks: number;
+  currentDamage: number;
+  estimatedCompletionTick?: number;
+  complete: boolean;
 }
 
 export class StepwiseSimulator {
@@ -33,6 +74,10 @@ export class StepwiseSimulator {
   private maxHeatOutput = 0;
   private totalEUoutput = 0;
   private totalHeatOutput = 0;
+  private totalFuelDamage = 0;
+  private totalFuelHeat = 0;
+  private fuelRodStats = new Map<string, FuelRodStatAccumulator>();
+  private breederStats = new Map<string, BreederStatAccumulator>();
   private lastEUoutput = 0;
   private lastHeatOutput = 0;
   private minReactorHeat: number;
@@ -55,6 +100,8 @@ export class StepwiseSimulator {
       component.clearCurrentHeat();
       component.clearDamage();
       this.totalRodCount += component.getRodCount();
+      if (component.getRodCount() > 0) this.initializeFuelRodStats(component);
+      if (component.definition.kind === "breeder") this.initializeBreederStats(component);
     }
   }
 
@@ -74,6 +121,7 @@ export class StepwiseSimulator {
     this.reactor.clearVentedHeat();
     this.reactor.clearHeatFlows();
     this.forEachComponent((component) => component.preReactorTick());
+    for (const stat of this.fuelRodStats.values()) stat.lastDamageDelta = 0;
     if (this.active) this.allFuelRodsDepleted = true;
 
     this.forEachComponent((component) => {
@@ -83,6 +131,7 @@ export class StepwiseSimulator {
       component.dissipate();
       component.transfer();
     });
+    this.forEachComponent((component) => this.recordBreederStats(component));
 
     this.minReactorHeat = Math.min(this.minReactorHeat, this.reactor.currentHeat);
     this.maxReactorHeat = Math.max(this.maxReactorHeat, this.reactor.currentHeat);
@@ -90,7 +139,10 @@ export class StepwiseSimulator {
 
     if (this.active) {
       this.forEachComponent((component) => {
-        if (!component.isBroken()) component.generateEnergy();
+        if (component.isBroken()) return;
+        const damageBefore = component.currentDamage;
+        component.generateEnergy();
+        this.recordFuelRodStats(component, component.currentDamage - damageBefore);
       });
     }
 
@@ -129,6 +181,26 @@ export class StepwiseSimulator {
     return this.completedResult;
   }
 
+
+  /** Run a batch of ticks without building intermediate snapshots.
+   *  Only the final tick snapshot is built; events are collected. */
+  stepBatch(steps: number): StepResult {
+    if (this.completedResult) {
+      return {
+        snapshot: this.snapshots.at(-1) ?? this.buildSnapshot(),
+        events: [],
+        completed: true,
+        result: this.completedResult,
+      };
+    }
+    const events: SimulationEvent[] = [];
+    let lastResult: StepResult | null = null;
+    for (let i = 0; i < steps && !this.completedResult; i++) {
+      lastResult = this.step(false);
+      if (lastResult.events.length > 0) events.push(...lastResult.events);
+    }
+    return lastResult ? { ...lastResult, events } : { snapshot: this.buildSnapshot(), events, completed: false };
+  }
   private finalize(): SimulationResult {
     const summary: SimulationSummary = {
       ticks: this.tick,
@@ -144,6 +216,12 @@ export class StepwiseSimulator {
       minHeat: this.minReactorHeat,
       maxHeat: this.maxReactorHeat,
       totalRodCount: this.totalRodCount,
+      totalFuelDamage: this.totalFuelDamage,
+      euPerFuelDamage: this.totalFuelDamage > 0 ? this.totalEUoutput / this.totalFuelDamage : 0,
+      huPerFuelDamage: this.totalFuelDamage > 0 ? (40 * this.totalHeatOutput) / this.totalFuelDamage : 0,
+      heatPerFuelDamage: this.totalFuelDamage > 0 ? this.totalFuelHeat / this.totalFuelDamage : 0,
+      fuelRodStats: this.buildFuelRodStats(),
+      breederStats: this.buildBreederStats(),
       firstComponentBroken: this.firstComponentBroken,
       firstRodDepleted: this.firstRodDepleted,
     };
@@ -277,6 +355,124 @@ export class StepwiseSimulator {
     }
   }
 
+
+  private cellKey(component: RuntimeComponent) {
+    return `${component.row}:${component.col}`;
+  }
+
+  private initializeFuelRodStats(component: RuntimeComponent) {
+    this.fuelRodStats.set(this.cellKey(component), {
+      row: component.row,
+      col: component.col,
+      id: component.definition.id,
+      name: component.definition.name,
+      maxDamage: component.getMaxDamage(),
+      totalDamage: 0,
+      lastDamageDelta: 0,
+      activeTicks: 0,
+      totalEU: 0,
+      totalHeat: 0,
+      currentDamage: component.currentDamage,
+      depleted: component.isBroken(),
+    });
+  }
+
+  private recordFuelRodStats(component: RuntimeComponent, damageDelta: number) {
+    if (component.getRodCount() <= 0) return;
+    const key = this.cellKey(component);
+    const stat = this.fuelRodStats.get(key);
+    if (!stat) {
+      this.initializeFuelRodStats(component);
+      this.recordFuelRodStats(component, damageDelta);
+      return;
+    }
+    const consumed = Math.max(0, damageDelta);
+    stat.lastDamageDelta = consumed;
+    stat.currentDamage = component.currentDamage;
+    stat.depleted = component.isBroken();
+    if (consumed <= 0) return;
+    stat.activeTicks++;
+    stat.totalDamage += consumed;
+    stat.totalEU += component.currentEUGenerated;
+    stat.totalHeat += component.currentHeatGenerated;
+    this.totalFuelDamage += consumed;
+    this.totalFuelHeat += component.currentHeatGenerated;
+    const remainingDamage = Math.max(0, stat.maxDamage - component.currentDamage);
+    stat.estimatedDepletionTick = remainingDamage > 0 ? this.tick + Math.ceil(remainingDamage / consumed) : this.tick;
+  }
+
+  private buildFuelRodStats(): FuelRodDepletionStat[] {
+    return Array.from(this.fuelRodStats.values()).map((stat) => ({
+      row: stat.row,
+      col: stat.col,
+      id: stat.id,
+      name: stat.name,
+      maxDamage: stat.maxDamage,
+      currentDamage: this.reactor.getComponentAt(stat.row, stat.col)?.currentDamage ?? stat.currentDamage,
+      totalDamage: stat.totalDamage,
+      lastDamageDelta: stat.lastDamageDelta,
+      activeTicks: stat.activeTicks,
+      totalEU: stat.totalEU,
+      totalHeat: stat.totalHeat,
+      euPerDamage: stat.totalDamage > 0 ? stat.totalEU / stat.totalDamage : 0,
+      heatPerDamage: stat.totalDamage > 0 ? stat.totalHeat / stat.totalDamage : 0,
+      estimatedDepletionTick: stat.estimatedDepletionTick,
+      depleted: this.reactor.getComponentAt(stat.row, stat.col)?.isBroken() ?? stat.depleted,
+    }));
+  }
+
+  private initializeBreederStats(component: RuntimeComponent) {
+    this.breederStats.set(this.cellKey(component), {
+      row: component.row,
+      col: component.col,
+      id: component.definition.id,
+      name: component.definition.name,
+      maxDamage: component.getMaxDamage(),
+      totalProgress: 0,
+      lastProgressDelta: 0,
+      activeTicks: 0,
+      currentDamage: component.currentDamage,
+      complete: component.isBroken(),
+    });
+  }
+
+  private recordBreederStats(component: RuntimeComponent) {
+    if (component.definition.kind !== "breeder") return;
+    const key = this.cellKey(component);
+    const stat = this.breederStats.get(key);
+    if (!stat) {
+      this.initializeBreederStats(component);
+      this.recordBreederStats(component);
+      return;
+    }
+    const progress = Math.max(0, component.currentBreederProgress);
+    stat.lastProgressDelta = progress;
+    stat.currentDamage = component.currentDamage;
+    stat.complete = component.isBroken();
+    if (progress <= 0) return;
+    stat.activeTicks++;
+    stat.totalProgress += progress;
+    const remaining = Math.max(0, stat.maxDamage - component.currentDamage);
+    stat.estimatedCompletionTick = remaining > 0 ? this.tick + Math.ceil(remaining / progress) : this.tick;
+  }
+
+  private buildBreederStats(): BreederProgressStat[] {
+    return Array.from(this.breederStats.values()).map((stat) => ({
+      row: stat.row,
+      col: stat.col,
+      id: stat.id,
+      name: stat.name,
+      maxDamage: stat.maxDamage,
+      currentDamage: this.reactor.getComponentAt(stat.row, stat.col)?.currentDamage ?? stat.currentDamage,
+      totalProgress: stat.totalProgress,
+      lastProgressDelta: stat.lastProgressDelta,
+      activeTicks: stat.activeTicks,
+      progressPerTick: stat.activeTicks > 0 ? stat.totalProgress / stat.activeTicks : 0,
+      estimatedCompletionTick: stat.estimatedCompletionTick,
+      complete: this.reactor.getComponentAt(stat.row, stat.col)?.isBroken() ?? stat.complete,
+    }));
+  }
+
   private buildSnapshot(): TickSnapshot {
     return {
       tick: this.tick,
@@ -291,13 +487,18 @@ export class StepwiseSimulator {
       components: this.reactor.components().map((component) => component.snapshot()),
       componentHeatFlows: this.reactor.getComponentHeatFlows(),
       hullHeatFlows: this.reactor.getHullHeatFlows(),
+      fuelRodStats: this.buildFuelRodStats(),
+      breederStats: this.buildBreederStats(),
       eventCount: this.events.length,
     };
   }
 
   private pushSnapshot() {
     const snapshot = this.buildSnapshot();
-    if (this.snapshots.length < this.maxSnapshots) this.snapshots.push(snapshot);
+    this.snapshots.push(snapshot);
+    if (this.snapshots.length > this.maxSnapshots) {
+      this.snapshots.splice(0, this.snapshots.length - this.maxSnapshots);
+    }
     return snapshot;
   }
 

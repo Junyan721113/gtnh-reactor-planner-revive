@@ -142,6 +142,29 @@ function cell(
   };
 }
 
+function breeder(
+  id: number,
+  key: string,
+  name: string,
+  image: string,
+  maxDamage: number,
+  sourceMod: ComponentDefinition["sourceMod"],
+  heatBonusStep: number,
+  heatBonusMultiplier: number,
+): ComponentDefinition {
+  return {
+    id,
+    key,
+    name,
+    kind: "breeder",
+    maxDamage,
+    maxHeat: 1,
+    sourceMod,
+    image,
+    breeder: { heatBonusStep, heatBonusMultiplier },
+  };
+}
+
 export const COMPONENTS: ComponentDefinition[] = [
   ...fuelFamily(
     1,
@@ -329,8 +352,8 @@ export const COMPONENTS: ComponentDefinition[] = [
     64,
     true,
   ),
-  singleFuel(62, "Glowstone", "荧石", gt("gt.rodGlowstone.png"), 10_000, "GregTech", 0, 0, false),
-  singleFuel(63, "Lithium", "锂", gt("gt.rodLithium.png"), 10_000, "GregTech", 0, 0, false),
+  breeder(62, "breederRodGlowstone", "燃料棒（荧石）", gt("gt.rodGlowstone.png"), 10_000, "GregTech", 3_000, 1),
+  breeder(63, "breederRodLithium", "燃料棒（锂）", gt("gt.rodLithium.png"), 10_000, "GregTech", 3_000, 1),
   cell(64, "coolantCell60kHelium", "60k氦冷却单元", gt("gt.60k_Helium_Coolantcell.png"), 60_000, "GregTech"),
   cell(65, "coolantCell180kHelium", "180k氦冷却单元", gt("gt.180k_Helium_Coolantcell.png"), 180_000, "GregTech"),
   cell(66, "coolantCell360kHelium", "360k氦冷却单元", gt("gt.360k_Helium_Coolantcell.png"), 360_000, "GregTech"),

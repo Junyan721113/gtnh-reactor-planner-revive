@@ -159,6 +159,7 @@ export class RuntimeComponent {
   minEUGenerated = Number.MAX_VALUE;
   maxEUGenerated = 0;
   currentHeatGenerated = 0;
+  currentBreederProgress = 0;
   minHeatGenerated = Number.MAX_VALUE;
   maxHeatGenerated = 0;
   currentHullHeating = 0;
@@ -224,6 +225,7 @@ export class RuntimeComponent {
     this.currentCondensatorCooling = 0;
     this.currentEUGenerated = 0;
     this.currentHeatGenerated = 0;
+    this.currentBreederProgress = 0;
   }
 
   getMaxDamage() {
@@ -261,12 +263,23 @@ export class RuntimeComponent {
     if (this.getMaxDamage() > 1 && value > 0) this.currentDamage += value;
   }
 
+  acceptBreederPulse(multiplier = 1) {
+    if (this.definition.kind !== "breeder" || !this.parent || this.isBroken()) return 0;
+    const breeder = this.definition.breeder!;
+    const heatBonus =
+      breeder.heatBonusStep > 0 ? Math.trunc(this.parent.currentHeat / breeder.heatBonusStep) * breeder.heatBonusMultiplier : 0;
+    const damage = Math.max(0, multiplier) * (1 + heatBonus);
+    this.applyDamage(damage);
+    this.currentBreederProgress += damage;
+    return damage;
+  }
+
   adjustCurrentHeat(value: number): number {
     if (this.definition.kind === "condensator") {
       if (value < 0) return value;
       this.currentCondensatorCooling += value;
       this.bestCondensatorCooling = Math.max(this.bestCondensatorCooling, this.currentCondensatorCooling);
-      const accepted = Math.min(value, this.getMaxHeat() - value);
+      const accepted = Math.min(value, Math.max(0, this.getMaxHeat() - this.currentHeat));
       this.currentHeat += accepted;
       this.maxReachedHeat = Math.max(this.maxReachedHeat, this.currentHeat);
       return value - accepted;
@@ -279,7 +292,7 @@ export class RuntimeComponent {
     let next = this.currentHeat + value;
     let rejected = 0;
     if (next > this.getMaxHeat()) {
-      rejected = this.getMaxHeat() - next + 1;
+      rejected = next - this.getMaxHeat();
       next = this.getMaxHeat();
     } else if (next < 0) {
       rejected = next;
@@ -450,8 +463,15 @@ export class RuntimeComponent {
     this.currentHeatGenerated = heat;
     this.minHeatGenerated = Math.min(this.minHeatGenerated, heat);
     this.maxHeatGenerated = Math.max(this.maxHeatGenerated, heat);
+    this.pulseAdjacentBreeders(fuel.rodCount);
     this.handleFuelHeat(heat);
     return heat;
+  }
+
+  private pulseAdjacentBreeders(multiplier: number) {
+    for (const [dr, dc] of neighborOffsets) {
+      this.parent?.getComponentAt(this.row + dr, this.col + dc)?.acceptBreederPulse(multiplier);
+    }
   }
 
   private handleFuelHeat(heat: number) {

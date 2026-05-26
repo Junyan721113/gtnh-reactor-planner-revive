@@ -3,6 +3,7 @@ import { createEmptyDesign, DEFAULT_CONFIG } from "./defaults";
 import { REACTOR_COLS, REACTOR_ROWS, type ReactorDesign } from "./types";
 
 const BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+const REVISION_4_COMPONENT_MAX = 72;
 
 class BigintStorage {
   private storedValue = 0n;
@@ -53,7 +54,9 @@ class BigintStorage {
 export function encodeReactorCode(design: ReactorDesign) {
   const storage = new BigintStorage();
   const config = design.config;
-  const componentMax = 72;
+  // Revision 4 codes use a fixed numeric base. Changing this would make older
+  // revision 4 codes decode into different component IDs when new IDs are added.
+  const componentMax = REVISION_4_COMPONENT_MAX;
   const maxComponentHeat = 1_000_000_000;
   storage.store(config.maxSimulationTicks, 5_000_000);
   storage.store(config.usingReactorCoolantInjectors ? 1 : 0, 1);
@@ -108,7 +111,7 @@ export function decodeReactorCode(rawCode: string): ReactorDesign {
   const storage = BigintStorage.inputBase64(code);
   const design = createEmptyDesign();
   const revision = storage.extract(255);
-  const componentMax = revision === 4 ? 72 : revision === 3 ? 58 : revision === 2 ? 44 : 38;
+  const componentMax = revision === 4 ? REVISION_4_COMPONENT_MAX : revision === 3 ? 58 : revision === 2 ? 44 : 38;
   const maxComponentHeat = revision === 4 ? 1_000_000_000 : revision === 3 ? 1_080_000 : 360_000;
   if (revision > 4) throw new Error(`Unsupported reactor code revision ${revision}`);
   if (revision >= 1) {

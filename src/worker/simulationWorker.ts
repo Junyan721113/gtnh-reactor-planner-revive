@@ -125,11 +125,7 @@ function runSingleStep(design: ReactorDesign, options: { maxTicks?: number; maxS
     ensureSessionRunner(design, options);
     const step = runSessionTickBatch(1);
     if (!step) return;
-    if (step.completed && step.result) {
-      self.postMessage({ type: "done", result: step.result } satisfies WorkerResponse);
-      clearSession(false);
-      return;
-    }
+    if (step.completed) return;
     self.postMessage({ type: "step:done", tick: step.snapshot.tick } satisfies WorkerResponse);
     postXuJinState(false);
   } catch (error) {
@@ -200,11 +196,7 @@ function restartXuJinTimer() {
 function runXuJinTick() {
   const step = runSessionTickBatch(getXuJinStepsPerRefresh());
   if (!step) return;
-  if (step.completed && step.result) {
-    self.postMessage({ type: "done", result: step.result } satisfies WorkerResponse);
-    clearSession(false);
-    return;
-  }
+  if (step.completed) return;
   postXuJinState(true);
 }
 
@@ -218,31 +210,26 @@ function runFastSimulationChunk() {
   if (!sessionRunning || cancelled || !sessionRunner) return;
   const step = runSessionTickBatch(4_000);
   if (!step) return;
-  if (step.completed && step.result) {
-    self.postMessage({ type: "done", result: step.result } satisfies WorkerResponse);
-    clearSession(false);
-    return;
-  }
+  if (step.completed) return;
   postXuJinState(true);
   scheduleFastSimulationChunk();
 }
 
+/** Run a batch of ticks using stepBatch (builds only final snapshot). Posts done+clearSession internally on completion. */
 function runSessionTickBatch(stepsToRun: number) {
   if (!sessionRunner || cancelled) return null;
-  let latestStep: ReturnType<StepwiseSimulator["step"]> | null = null;
-  const events: import("../domain/types").SimulationEvent[] = [];
-  for (let i = 0; i < stepsToRun; i++) {
-    const step = sessionRunner.step(true);
-    latestStep = step;
-    if (step.events.length > 0) events.push(...step.events);
-    if (step.completed) break;
+  const result = sessionRunner.stepBatch(stepsToRun);
+  if (result.completed && result.result) {
+    self.postMessage({ type: "done", result: result.result } satisfies WorkerResponse);
+    clearSession(false);
+    return result;
   }
-  if (!latestStep) return null;
+  const events = result.events;
   if (events.length > 0) {
     self.postMessage({ type: "events", events } satisfies WorkerResponse);
   }
-  self.postMessage({ type: "snapshot", snapshot: latestStep.snapshot } satisfies WorkerResponse);
-  return latestStep;
+  self.postMessage({ type: "snapshot", snapshot: result.snapshot } satisfies WorkerResponse);
+  return result;
 }
 
 function clearSession(emitState: boolean) {

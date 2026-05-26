@@ -8,7 +8,8 @@ export type ComponentKind =
   | "exchanger"
   | "plating"
   | "condensator"
-  | "reflector";
+  | "reflector"
+  | "breeder";
 
 export type SourceMod = "IC2" | "GregTech" | "GTNH" | "GoodGenerator";
 
@@ -17,6 +18,11 @@ export interface FuelRodSpec {
   heatMult: number;
   rodCount: number;
   moxStyle: boolean;
+}
+
+export interface BreederSpec {
+  heatBonusStep: number;
+  heatBonusMultiplier: number;
 }
 
 export interface VentSpec {
@@ -45,6 +51,7 @@ export interface ComponentDefinition {
   sourceMod: SourceMod;
   image: string;
   fuel?: FuelRodSpec;
+  breeder?: BreederSpec;
   vent?: VentSpec;
   exchanger?: ExchangerSpec;
   plating?: PlatingSpec;
@@ -111,6 +118,39 @@ export interface HullHeatFlow {
   amount: number;
 }
 
+export interface FuelRodDepletionStat {
+  row: number;
+  col: number;
+  id: number;
+  name: string;
+  maxDamage: number;
+  currentDamage: number;
+  totalDamage: number;
+  lastDamageDelta: number;
+  activeTicks: number;
+  totalEU: number;
+  totalHeat: number;
+  euPerDamage: number;
+  heatPerDamage: number;
+  estimatedDepletionTick?: number;
+  depleted: boolean;
+}
+
+export interface BreederProgressStat {
+  row: number;
+  col: number;
+  id: number;
+  name: string;
+  maxDamage: number;
+  currentDamage: number;
+  totalProgress: number;
+  lastProgressDelta: number;
+  activeTicks: number;
+  progressPerTick: number;
+  estimatedCompletionTick?: number;
+  complete: boolean;
+}
+
 export interface TickSnapshot {
   tick: number;
   active: boolean;
@@ -124,6 +164,8 @@ export interface TickSnapshot {
   components: ComponentSnapshot[];
   componentHeatFlows: ComponentHeatFlow[];
   hullHeatFlows: HullHeatFlow[];
+  fuelRodStats: FuelRodDepletionStat[];
+  breederStats: BreederProgressStat[];
   eventCount: number;
 }
 
@@ -149,6 +191,12 @@ export interface SimulationSummary {
   minHeat: number;
   maxHeat: number;
   totalRodCount: number;
+  totalFuelDamage: number;
+  euPerFuelDamage: number;
+  huPerFuelDamage: number;
+  heatPerFuelDamage: number;
+  fuelRodStats: FuelRodDepletionStat[];
+  breederStats: BreederProgressStat[];
   firstComponentBroken?: SimulationEvent;
   firstRodDepleted?: SimulationEvent;
 }
