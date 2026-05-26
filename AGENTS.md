@@ -35,12 +35,14 @@
 - revision 4 reactor code 的组件编码基数固定为 `72`。不要改成 `Math.max(...COMPONENT_BY_ID.keys())`；新增超过 72 的元件时应升级 revision 并补兼容测试。
 - 热流箭头显示的是元件间净热流，位于槽位边界；颜色映射按 GTNH 热量档位设计，不只是 `amount / tickFlux`。
 - `StepwiseSimulator.stepBatch()` 必须保留批量 tick 中所有中间事件；Worker 的徐进和高速模拟依赖这个返回值推送事件流。
+- Worker 徐进速度调度的纯函数在 `src/worker/timing.ts`，已有单元测试覆盖速度归一化、10 Hz 刷新上限和 carry 计算。
 
 ## 当前状态
 - 最近验证通过的命令：
 - `npx tsc --noEmit`
 - `npm run test -- --reporter=verbose`
 - `npm run tauri:build`
+- 当前单元测试覆盖 20 个用例，包括 codec 旧 hex code、无效 code、revision 4 固定基数稳定性、模拟行为和 worker timing。
 - `npm run tauri:build` 会间接运行 `npm run build`。现有 Vite chunk size 警告目前不视为失败。
 - 当前工作区有较多未提交改动，涉及 UI、模拟可视化、codec、元件清单、信息栏和燃料统计。编辑前先看 `git status --short`。
 
@@ -66,6 +68,7 @@
 - `src/sim/runtime.ts`：每 tick 的运行时行为和热流记录。
 - `src/sim/stepper.ts`：逐步模拟、快照、事件和 summary。
 - `src/worker/simulationWorker.ts`：worker 协议和调度。
+- `src/worker/timing.ts`：徐进速度归一化、刷新间隔和批量步数计算。
 - `src/state/selectionStore.ts`：当前选中元件外部 store。
 - `src/state/infoBarStore.ts`：信息栏外部 store。
 - `src/ui/ReactorGrid.tsx`：6x9 网格、hover 信息、热流 marker、热量条渲染。
@@ -75,3 +78,4 @@
 - `src/ui/RunDetailsPanel.tsx`：统计块容器，整合燃料效率和事件流。
 - `tests/codecs.test.ts`：reactor code 兼容测试。
 - `tests/simulator.test.ts`：基础模拟行为、逐步模拟和批处理事件测试。
+- `tests/workerTiming.test.ts`：徐进速度调度纯函数测试。

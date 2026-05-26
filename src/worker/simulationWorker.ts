@@ -1,6 +1,7 @@
 import type { ReactorDesign, SimulationResult, TickSnapshot } from "../domain/types";
 import { simulate } from "../sim/simulator";
 import { StepwiseSimulator } from "../sim/stepper";
+import { getXuJinIntervalMs, getXuJinStepsPerRefresh, normalizeXuJinSpeed } from "./timing";
 
 export type WorkerRequest =
   | {
@@ -59,9 +60,6 @@ let sessionSpeed = 1;
 let sessionRunning = false;
 let sessionStepCarry = 0;
 
-const MAX_XUJIN_SPEED = 10_000;
-const MAX_REFRESH_HZ = 10;
-
 self.onmessage = (event: MessageEvent<WorkerRequest>) => {
   const request = event.data;
   if (request.type === "cancel") {
@@ -82,7 +80,7 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
     return;
   }
   if (request.type === "xujin:setSpeed") {
-    sessionSpeed = normalizeSpeed(request.speed);
+    sessionSpeed = normalizeXuJinSpeed(request.speed);
     if (sessionTimer) restartXuJinTimer();
     postXuJinState(sessionRunning);
     return;
@@ -137,7 +135,7 @@ function runSingleStep(design: ReactorDesign, options: { maxTicks?: number; maxS
 function startXuJin(design: ReactorDesign, speed: number, options: { maxTicks?: number; maxSnapshots?: number } = {}) {
   pauseXuJin();
   cancelled = false;
-  sessionSpeed = normalizeSpeed(speed);
+  sessionSpeed = normalizeXuJinSpeed(speed);
   try {
     ensureSessionRunner(design, options);
     sessionRunning = true;
@@ -190,11 +188,13 @@ function resumeXuJin() {
 function restartXuJinTimer() {
   if (sessionTimer) clearInterval(sessionTimer);
   sessionStepCarry = 0;
-  sessionTimer = setInterval(runXuJinTick, getXuJinIntervalMs());
+  sessionTimer = setInterval(runXuJinTick, getXuJinIntervalMs(sessionSpeed));
 }
 
 function runXuJinTick() {
-  const step = runSessionTickBatch(getXuJinStepsPerRefresh());
+  const batch = getXuJinStepsPerRefresh(sessionSpeed, sessionStepCarry);
+  sessionStepCarry = batch.carry;
+  const step = runSessionTickBatch(batch.steps);
   if (!step) return;
   if (step.completed) return;
   postXuJinState(true);
@@ -245,22 +245,4 @@ function clearSession(emitState: boolean) {
 
 function postXuJinState(running: boolean) {
   self.postMessage({ type: "xujin:state", running, speed: sessionSpeed, tick: sessionRunner?.tick ?? 0 } satisfies WorkerResponse);
-}
-
-function normalizeSpeed(speed: number) {
-  if (!Number.isFinite(speed)) return 1;
-  return Math.max(1, Math.min(MAX_XUJIN_SPEED, Math.trunc(speed)));
-}
-
-function getXuJinIntervalMs() {
-  if (sessionSpeed <= MAX_REFRESH_HZ) return Math.round(1_000 / sessionSpeed);
-  return Math.round(1_000 / MAX_REFRESH_HZ);
-}
-
-function getXuJinStepsPerRefresh() {
-  if (sessionSpeed <= MAX_REFRESH_HZ) return 1;
-  const exact = sessionSpeed / MAX_REFRESH_HZ + sessionStepCarry;
-  const whole = Math.max(1, Math.floor(exact));
-  sessionStepCarry = exact - whole;
-  return whole;
 }
