@@ -1661,7 +1661,7 @@ dependencies = [
 
 [[package]]
 name = "ic2-exp-reactor-planner-modern"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "rfd",
  "serde",
